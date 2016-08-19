@@ -1,0 +1,16 @@
+{
+  "name": "baohan/swoole-gearman",
+  "description": "A multi-processes worker framework based on Swoole and Gearman",
+  "version": "0.1.0",
+  "require": {
+    "php": "^5.5.9"
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "baohan",
+      "email": "baohanddd@gmail.com",
+      "homepage": "https://twitter.com/baohanddd"
+    }
+  ]
+}
