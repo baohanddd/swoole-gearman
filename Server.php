@@ -26,16 +26,6 @@ class Server
     private $swoole_port = 9500;
 
     /**
-     * @var string
-     */
-    private $gearman_host = '127.0.0.1';
-
-    /**
-     * @var int
-     */
-    private $gearman_port = 4730;
-
-    /**
      * @var bool
      */
     private $daemonize = false;
@@ -75,19 +65,10 @@ class Server
      */
     private $evt_worker_start;
 
-    /**
-     * custom unserialize method
-     *
-     * @var Callable
-     */
-    private $decode;
-
-    public function __construct()
+    public function __construct(Worker $worker)
     {
-        $this->w = new Worker(['host' => $this->gearman_host, 'port' => $this->gearman_port]);
-        $this->decode = function($payload) {
-            return $payload;
-        };
+//        $this->w = new Worker(['host' => $this->gearman_host, 'port' => $this->gearman_port]);
+        $this->w = $worker;
     }
 
     public function start()
@@ -143,22 +124,11 @@ class Server
         }
         $GLOBALS['worker_id'] = $workerId;
         echo "worker{$workerId} start" . PHP_EOL;
-        $this->initGearmanWorker();
+        $this->w->listen();
 
         if(is_callable($this->evt_worker_start)) {
             call_user_func($this->evt_worker_start, $serv, $workerId);
         }
-    }
-
-    /**
-     * @param $key
-     * @param $callback
-     * @return string
-     */
-    public function addCallback($key, $callback) {
-        $this->w->addCallback($key, function(\GearmanJob $context) use ($callback) {
-            return call_user_func($callback, $this->decode($context->workload()));
-        });
     }
 
     /**
@@ -226,38 +196,6 @@ class Server
     }
 
     /**
-     * @return string
-     */
-    public function getGearmanHost()
-    {
-        return $this->gearman_host;
-    }
-
-    /**
-     * @param string $gearman_host
-     */
-    public function setGearmanHost($gearman_host)
-    {
-        $this->gearman_host = $gearman_host;
-    }
-
-    /**
-     * @return int
-     */
-    public function getGearmanPort()
-    {
-        return $this->gearman_port;
-    }
-
-    /**
-     * @param int $gearman_port
-     */
-    public function setGearmanPort($gearman_port)
-    {
-        $this->gearman_port = (int) $gearman_port;
-    }
-
-    /**
      * @return boolean
      */
     public function isDaemonize()
@@ -271,14 +209,6 @@ class Server
     public function setDaemonize($daemonize)
     {
         $this->daemonize = (bool) $daemonize;
-    }
-
-    /**
-     * @return Worker
-     */
-    public function getGearmanWorker()
-    {
-        return $this->w;
     }
 
     /**
@@ -327,14 +257,6 @@ class Server
     public function setEvtWorkerStart(callable $evt_worker_start)
     {
         $this->evt_worker_start = $evt_worker_start;
-    }
-
-    /**
-     * @param Callable $decode
-     */
-    public function setDecode($decode)
-    {
-        $this->decode = $decode;
     }
 
     private function initGearmanWorker() {

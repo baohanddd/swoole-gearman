@@ -9,10 +9,21 @@ class Worker
      */
     private $w;
 
-    public function __construct($cfg)
+    /**
+     * custom unserialize method
+     *
+     * @var Callable
+     */
+    private $decode;
+
+    public function __construct($host = '127.0.0.1', $port = 4730)
     {
         $this->w = new \GearmanWorker();
-        $this->w->addServer($cfg['host'], $cfg['port']);
+        $this->w->addServer($host, $port);
+
+        $this->decode = function($payload) {
+            return $payload;
+        };
     }
 
     /**
@@ -35,10 +46,28 @@ class Worker
 
     /**
      * @param $key
-     * @param $callable
+     * @param $callback
+     * @return string
      */
-    public function addCallback($key, $callable)
+    public function addCallback($key, $callback) {
+        $this->w->addCallback($key, function(\GearmanJob $context) use ($callback) {
+            return call_user_func($callback, $this->decode($context->workload()));
+        });
+    }
+
+    /**
+     * @return Worker
+     */
+    public function getGearmanWorker()
     {
-        $this->w->addFunction($key, $callable);
+        return $this->w;
+    }
+
+    /**
+     * @param Callable $decode
+     */
+    public function setDecode($decode)
+    {
+        $this->decode = $decode;
     }
 }

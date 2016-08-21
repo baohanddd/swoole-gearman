@@ -1,7 +1,6 @@
 {
   "name": "baohan/swoole-gearman",
   "description": "A multi-processes worker framework based on Swoole and Gearman",
-  "version": "0.1.0",
   "require": {
     "php": "^5.5.9"
   },
