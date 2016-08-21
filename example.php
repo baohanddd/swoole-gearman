@@ -9,6 +9,12 @@ $GLOBALS['cfg'] = include(APP_PATH . "/config/config.php");
 try {
     $serv = new \baohan\SwooleGearman\Server();
 
+    // custom handle $payload
+    $serv->setDecode(function($payload) {
+        return new Document($payload);
+    });
+
+    // custom callback event
     $serv->setEvtStart(function($serv) {
         echo "server start!" . PHP_EOL;
     });

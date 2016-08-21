@@ -75,9 +75,19 @@ class Server
      */
     private $evt_worker_start;
 
+    /**
+     * custom unserialize method
+     *
+     * @var Callable
+     */
+    private $decode;
+
     public function __construct()
     {
         $this->w = new Worker(['host' => $this->gearman_host, 'port' => $this->gearman_port]);
+        $this->decode = function($payload) {
+            return $payload;
+        };
     }
 
     public function start()
@@ -147,7 +157,7 @@ class Server
      */
     public function addCallback($key, $callback) {
         $this->w->addCallback($key, function(\GearmanJob $context) use ($callback) {
-            return call_user_func($callback, $context->workload());
+            return call_user_func($callback, $this->decode($context->workload()));
         });
     }
 
@@ -317,6 +327,14 @@ class Server
     public function setEvtWorkerStart(callable $evt_worker_start)
     {
         $this->evt_worker_start = $evt_worker_start;
+    }
+
+    /**
+     * @param Callable $decode
+     */
+    public function setDecode($decode)
+    {
+        $this->decode = $decode;
     }
 
     private function initGearmanWorker() {
