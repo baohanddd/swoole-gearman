@@ -50,7 +50,7 @@ class Worker
      * @return string
      */
     public function addCallback($key, $callback) {
-        $this->w->addCallback($key, function(\GearmanJob $context) use ($callback) {
+        $this->w->addFunction($key, function(\GearmanJob $context) use ($callback) {
             return call_user_func($callback, $this->decode($context->workload()));
         });
     }
