@@ -43,7 +43,8 @@ class Router
     {
         $class = $this->getJobClassName($context->functionName());
         $job = new $class;
-        $job->{$this->executor}($this->decode($context->workload()));
+        $decode = $this->decode;
+        $job->{$this->executor}($decode($context->workload()));
     }
 
     /**
