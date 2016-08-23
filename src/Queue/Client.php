@@ -21,7 +21,7 @@ class Client
      */
     public function fire($evtName, $payload)
     {
-        $this->c->doBackground($evtName, $payload);
+        $this->c->doBackground($evtName, json_encode($payload));
     }
 
     /**
