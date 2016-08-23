@@ -2,6 +2,8 @@
 namespace baohan\SwooleGearman\Queue;
 
 
+use baohan\SwooleGearman\Router\Router;
+
 class Worker
 {
     /**
@@ -10,20 +12,14 @@ class Worker
     private $w;
 
     /**
-     * custom unserialize method
-     *
-     * @var Callable
+     * @var Router
      */
-    private $decode;
+    private $router;
 
     public function __construct($host = '127.0.0.1', $port = 4730)
     {
         $this->w = new \GearmanWorker();
         $this->w->addServer($host, $port);
-
-        $this->decode = function($payload) {
-            return $payload;
-        };
     }
 
     /**
@@ -45,13 +41,20 @@ class Worker
     }
 
     /**
+     * @param Router $router
+     */
+    public function addRouter(Router $router)
+    {
+        $this->router = $router;
+    }
+
+    /**
      * @param $key
-     * @param $callback
      * @return string
      */
-    public function addCallback($key, $callback) {
-        $this->w->addFunction($key, function(\GearmanJob $context) use ($callback) {
-            return call_user_func($callback, $this->decode($context->workload()));
+    public function addCallback($key) {
+        $this->w->addFunction($key, function(\GearmanJob $context) {
+            $this->router->callback($context);
         });
     }
 
@@ -61,13 +64,5 @@ class Worker
     public function getGearmanWorker()
     {
         return $this->w;
-    }
-
-    /**
-     * @param Callable $decode
-     */
-    public function setDecode($decode)
-    {
-        $this->decode = $decode;
     }
 }
