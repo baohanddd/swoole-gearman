@@ -2,7 +2,7 @@
 namespace baohan\SwooleGearman\Queue;
 
 
-use baohan\SwooleGearman\Router\Router;
+use baohan\SwooleGearman\Router;
 
 class Worker
 {
