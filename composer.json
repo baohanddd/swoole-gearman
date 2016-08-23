@@ -11,5 +11,10 @@
       "email": "baohanddd@gmail.com",
       "homepage": "https://twitter.com/baohanddd"
     }
-  ]
+  ],
+  "autoload": {
+    "psr-0": {
+      "baohan\\SwooleGearman\\": "/"
+    }
+  }
 }
