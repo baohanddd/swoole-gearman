@@ -41,10 +41,14 @@ class Router
      */
     public function callback(\GearmanJob $context)
     {
-        $class = $this->getJobClassName($context->functionName());
-        $job = new $class;
-        $decode = $this->decode;
-        $job->{$this->executor}($decode($context->workload()));
+        try {
+            $class = $this->getJobClassName($context->functionName());
+            $job = new $class;
+            $decode = $this->decode;
+            $job->{$this->executor}($decode($context->workload()));
+        } catch (\Exception $e) {
+            echo "Caught Exception: " . $e->getMessage();
+        }
     }
 
     /**
