@@ -47,7 +47,7 @@ class Router
             $decode = $this->decode;
             $job->{$this->executor}($decode($context->workload()));
         } catch (\Exception $e) {
-            echo "Caught Exception: " . $e->getMessage();
+            echo "Caught Exception: " . $e->getMessage() . PHP_EOL;
         }
     }
 
