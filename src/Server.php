@@ -124,11 +124,12 @@ class Server
         }
         $GLOBALS['worker_id'] = $workerId;
         echo "worker{$workerId} start" . PHP_EOL;
-        $this->w->listen();
 
         if(is_callable($this->evt_worker_start)) {
             call_user_func($this->evt_worker_start, $serv, $workerId);
         }
+
+        $this->w->listen();
     }
 
     /**
@@ -257,9 +258,5 @@ class Server
     public function setEvtWorkerStart(callable $evt_worker_start)
     {
         $this->evt_worker_start = $evt_worker_start;
-    }
-
-    private function initGearmanWorker() {
-        $this->w->listen();
     }
 }
