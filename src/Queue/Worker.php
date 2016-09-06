@@ -54,7 +54,7 @@ class Worker
      */
     public function addCallback($key) {
         $this->w->addFunction($key, function(\GearmanJob $context) {
-            $this->router->callback($context);
+            return $this->router->callback($context);
         });
     }
 
