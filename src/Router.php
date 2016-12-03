@@ -76,8 +76,19 @@ class Router
     protected function getJobClassName($key) {
         $class = $this->prefix;
         $parts = explode('::', $key);
-        foreach($parts as &$part) $part = ucwords($part);
+        foreach($parts as &$part) $part = $this->toCamelCase($part);
         $class .= implode("\\", $parts);
         return $class;
+    }
+
+    /**
+     * @param string $name name with underscore
+     * @return string
+     */
+    private function toCamelCase($name)
+    {
+        $cc = "";
+        foreach(explode('_', $name) as $part) $cc .= ucwords($part);
+        return $cc;
     }
 }
