@@ -2,7 +2,7 @@
   "name": "baohan/swoole-gearman",
   "description": "A multi-processes worker framework based on Swoole and Gearman",
   "require": {
-    "php": "^5.5.9"
+    "php": ">=5.5.9"
   },
   "license": "MIT",
   "authors": [
