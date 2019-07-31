@@ -129,6 +129,7 @@ class Server
             call_user_func($this->evt_worker_start, $serv, $workerId);
         }
 
+        $this->w->setName($workerId);
         $this->w->listen();
     }
 

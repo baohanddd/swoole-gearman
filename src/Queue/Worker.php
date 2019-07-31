@@ -16,6 +16,11 @@ class Worker
      */
     private $router;
 
+    /**
+     * @var string
+     */
+    private $name = "";
+
     public function __construct($host = '127.0.0.1', $port = 4730)
     {
         $this->w = new \GearmanWorker();
@@ -36,6 +41,8 @@ class Worker
                 echo "return_code: " . $this->w->returnCode() . "\n";
                 break;
             }
+            var_dump('worker: #'.$this->name);
+            var_dump('return code: '.$this->w->returnCode());
             \swoole_process::wait(false);
         }
     }
@@ -64,5 +71,10 @@ class Worker
     public function getGearmanWorker()
     {
         return $this->w;
+    }
+
+    public function setName($name)
+    {
+        $this->name = $name;
     }
 }
