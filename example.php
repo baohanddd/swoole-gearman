@@ -1,11 +1,18 @@
 <?php
+use baohan\SwooleGearman\Collection;
+use baohan\SwooleGearman\Queue\Worker;
+use baohan\SwooleGearman\Router;
+use baohan\SwooleGearman\Server;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+
+require('vendor/autoload.php');
 define('APP_PATH', realpath('.'));
-define('DS', "::");
 
 spl_autoload_register(function($class) {
     static $ds = '/';
 
-    $_route_map = ['baohan\SwooleGearman' => APP_PATH . '/src/'];
+    $_route_map = ['App\Job' => APP_PATH . '/app/jobs/'];
 
     $parts  = explode('\\', $class);
     $app    = array_shift($parts);
@@ -19,27 +26,25 @@ spl_autoload_register(function($class) {
 
 });
 
+$log = new Logger('worker');
+$log->pushHandler(new StreamHandler('/data/logs/worker.log', Logger::DEBUG));
+$log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
-try {
-    $worker = new \baohan\SwooleGearman\Queue\Worker();
-    $worker->addCallback('user::created');
-    $worker->addCallback('user::updated');
+$port = 6379;
+$w = new Worker('redis', $port, $log);
 
-    $router = new \baohan\SwooleGearman\Router();
-    $router->setPrefix("\\App\\Job\\");
-    $router->setExecutor("execute");
-    $router->setDecode(function($payload) {
-        return \json_decode($payload, true);
-    });
-    $worker->addRouter($router);
-    
-    $serv = new \baohan\SwooleGearman\Server($worker);
-    $serv->setSwoolePort(9505);
-    // custom callback event
-    $serv->setEvtStart(function($serv) {
-        echo "server start!" . PHP_EOL;
-    });
-    $serv->start();
-} catch(\Exception $e) {
-    echo "Caught Exception: " . $e->getMessage() . PHP_EOL;
-}
+$router = new Router($log);
+$router->setPrefix("\\App\\Job\\");
+$router->setExecutor("execute");
+$router->setListenQueueName('worker_queue');
+$router->setDecode(function($payload) {
+    return new Collection($payload);
+});
+
+$w->addRouter($router);
+
+$s = new Server($w);
+$s->setWorkerNum(2);
+$s->setReactorNum(1);
+$s->setSwoolePort(9500);
+$s->start();

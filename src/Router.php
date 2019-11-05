@@ -1,6 +1,8 @@
 <?php
 namespace baohan\SwooleGearman;
 
+use Monolog\Logger;
+
 class Router
 {
     /**
@@ -20,8 +22,19 @@ class Router
      */
     protected $decode;
 
-    public function __construct()
+    /**
+     * @var Logger
+     */
+    protected $log;
+
+    /**
+     * @var string
+     */
+    protected $queueName = "";
+
+    public function __construct(Logger $log)
     {
+        $this->log = $log;
         $this->decode = function($payload) {
             return $payload;
         };
@@ -36,19 +49,19 @@ class Router
     }
 
     /**
-     * @param \GearmanJob $context
+     * @param array $context
      * @return mixed|void
      */
-    public function callback(\GearmanJob $context)
+    public function callback(array $context)
     {
         try {
-            $class = $this->getJobClassName($context->functionName());
+            $class = $this->getJobClassName($context['name']);
             $job = new $class;
             $decode = $this->decode;
-            $job->{$this->executor}($decode($context->workload()));
+            $job->{$this->executor}($decode($context['data']));
             return 0;
         } catch (\Exception $e) {
-            echo "Caught Exception: " . $e->getMessage() . PHP_EOL;
+            $this->log->err($e->getMessage(), [$e->getTraceAsString()]);
             return $e->getCode();
         }
     }
@@ -67,6 +80,22 @@ class Router
     public function setExecutor($name)
     {
         $this->executor = $name;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function setListenQueueName($name)
+    {
+        $this->queueName = $name;
+    }
+
+    /**
+     * @return string
+     */
+    public function getListenQueueName()
+    {
+        return $this->queueName;
     }
 
     /**

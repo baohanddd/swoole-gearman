@@ -1,15 +1,15 @@
 <?php
 namespace baohan\SwooleGearman\Queue;
 
-
 use baohan\SwooleGearman\Router;
+use Monolog\Logger;
 
 class Worker
 {
     /**
      * @var \GearmanWorker
      */
-    private $w;
+    private $r;
 
     /**
      * @var Router
@@ -21,10 +21,28 @@ class Worker
      */
     private $name = "";
 
-    public function __construct($host = '127.0.0.1', $port = 4730)
+    /**
+     * @var Logger
+     */
+    protected $log;
+
+    /**
+     * Worker constructor.
+     * @param string $host
+     * @param int $port
+     * @param Logger $log
+     */
+    public function __construct($host = '127.0.0.1', $port = 6379, Logger $log)
     {
-        $this->w = new \GearmanWorker();
-        $this->w->addServer($host, $port);
+        $this->log = $log;
+        $this->r = new \Redis();
+        if(!$this->r->pconnect($host, $port)) {
+            $this->log->crit("Can not connect redis server with {$host}:{$port}", [
+                'host' => $host,
+                'port' => $port
+            ]);
+        }
+        $this->r->setOption(\Redis::OPT_READ_TIMEOUT, -1);
     }
 
     /**
@@ -34,17 +52,17 @@ class Worker
      */
     public function listen()
     {
-        while($this->w->work())
-        {
-            if ($this->w->returnCode() != GEARMAN_SUCCESS)
-            {
-                echo "return_code: " . $this->w->returnCode() . "\n";
-                break;
+        while($val = $this->r->blPop($this->router->getListenQueueName(), 0)) {
+            $payload = json_decode($val[1], true);
+            if(!$payload) {
+                $this->log->err('payload is empty or fails to parse from json...', $payload);
+            } else {
+                $this->log->debug("worker-".$this->name);
+                $this->router->callback($payload);
             }
-            var_dump('worker: #'.$this->name);
-            var_dump('return code: '.$this->w->returnCode());
-            \swoole_process::wait(false);
+            $this->log->debug('done a job', $payload);
         }
+        \swoole_process::wait(false);
     }
 
     /**
@@ -53,24 +71,6 @@ class Worker
     public function addRouter(Router $router)
     {
         $this->router = $router;
-    }
-
-    /**
-     * @param $key
-     * @return string
-     */
-    public function addCallback($key) {
-        $this->w->addFunction($key, function(\GearmanJob $context) {
-            return $this->router->callback($context);
-        });
-    }
-
-    /**
-     * @return Worker
-     */
-    public function getGearmanWorker()
-    {
-        return $this->w;
     }
 
     public function setName($name)
