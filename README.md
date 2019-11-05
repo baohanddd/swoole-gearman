@@ -4,7 +4,7 @@ A multi-processes worker framework based on Swoole and Gearman
 Install
 ====
 
-Install `swoole` and `gearman` first.
+Install `swoole` and `redis` first.
 
 
 How
@@ -14,25 +14,28 @@ Quick start
 
 ```php
 
-$worker = new \baohan\SwooleGearman\Queue\Worker();
-$worker->addCallback('user::created');
-$worker->addCallback('user::updated');
+$log = new Logger('worker');
+$log->pushHandler(new StreamHandler('/data/logs/worker.log', Logger::DEBUG));
+$log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
-$router = new \baohan\SwooleGearman\Router();
+$port = 6379;
+$w = new Worker('redis', $port, $log);
+
+$router = new Router($log);
 $router->setPrefix("\\App\\Job\\");
 $router->setExecutor("execute");
+$router->setListenQueueName('worker_queue');
 $router->setDecode(function($payload) {
-    return \json_decode($payload, true);
+    return new Collection($payload);
 });
-$worker->addRouter($router);
 
-$serv = new \baohan\SwooleGearman\Server($worker);
-$serv->setSwoolePort(9505);
-// custom callback event
-$serv->setEvtStart(function($serv) {
-    echo "server start!" . PHP_EOL;
-});
-$serv->start();
+$w->addRouter($router);
+
+$s = new Server($w);
+$s->setWorkerNum(2);
+$s->setReactorNum(1);
+$s->setSwoolePort(9500);
+$s->start();
 
 ```
 
