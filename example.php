@@ -34,12 +34,12 @@ $port = 6379;
 $w = new Worker('redis', $port, $log);
 
 $router = new Router($log);
-$router->setPrefix("\\App\\Job\\");
 $router->setExecutor("execute");
 $router->setListenQueueName('worker_queue');
 $router->setDecode(function($payload) {
     return new Collection($payload);
 });
+$router->addCallback('fu::timestamp::save', "App\Job\Timestamp\Saver");
 
 $w->addRouter($router);
 

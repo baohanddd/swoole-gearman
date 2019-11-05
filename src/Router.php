@@ -32,6 +32,11 @@ class Router
      */
     protected $queueName = "";
 
+    /**
+     * @var array
+     */
+    protected $jobs = [];
+
     public function __construct(Logger $log)
     {
         $this->log = $log;
@@ -50,12 +55,20 @@ class Router
 
     /**
      * @param array $context
-     * @return mixed|void
+     * @return int
      */
     public function callback(array $context)
     {
         try {
-            $class = $this->getJobClassName($context['name']);
+            if (!$this->validate($context)) {
+                $this->log->err('Invalid context', $context);
+                return 0;
+            }
+            if (!isset($this->jobs[$context['name']])) {
+                $this->log->err('Invalid registered job name', $context);
+                return 0;
+            }
+            $class = $this->jobs[$context['name']];
             $job = new $class;
             $decode = $this->decode;
             $job->{$this->executor}($decode($context['data']));
@@ -67,11 +80,17 @@ class Router
     }
 
     /**
-     * @param string $prefix
+     * @param array $context
+     * @return bool
      */
-    public function setPrefix($prefix)
+    public function validate(array $context)
     {
-        $this->prefix = $prefix;
+        if (!isset($context['name']))     return false;
+        if (!isset($context['data']))     return false;
+        if (!is_array($context['data']))  return false;
+        if (!is_string($context['name'])) return false;
+
+        return true;
     }
 
     /**
@@ -99,25 +118,11 @@ class Router
     }
 
     /**
-     * @param $key
-     * @return string
+     * @param $jobName
+     * @param $className
      */
-    protected function getJobClassName($key) {
-        $class = $this->prefix;
-        $parts = explode('::', $key);
-        foreach($parts as &$part) $part = $this->toCamelCase($part);
-        $class .= implode("\\", $parts);
-        return $class;
-    }
-
-    /**
-     * @param string $name name with underscore
-     * @return string
-     */
-    private function toCamelCase($name)
+    public function addCallback($jobName, $className)
     {
-        $cc = "";
-        foreach(explode('_', $name) as $part) $cc .= ucwords($part);
-        return $cc;
+        $this->jobs[$jobName] = $className;
     }
 }
