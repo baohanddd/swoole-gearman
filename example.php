@@ -1,5 +1,6 @@
 <?php
 use baohan\SwooleGearman\Collection;
+use baohan\SwooleGearman\Exception\ContextException;
 use baohan\SwooleGearman\Queue\Worker;
 use baohan\SwooleGearman\Router;
 use baohan\SwooleGearman\Server;
@@ -30,21 +31,24 @@ $log = new Logger('worker');
 $log->pushHandler(new StreamHandler('/data/logs/worker.log', Logger::DEBUG));
 $log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
-$port = 6379;
-$w = new Worker('redis', $port, $log);
+try {
+    $port = 6379;
+    $w = new Worker('redis', $port, $log);
 
-$router = new Router($log);
-$router->setExecutor("execute");
-$router->setListenQueueName('worker_queue');
-$router->setDecode(function($payload) {
-    return new Collection($payload);
-});
-$router->addCallback('fu::timestamp::save', "App\Job\Timestamp\Saver");
+    $router = new Router();
+    $router->setListenQueueName('worker_queue');
+    $router->addCallback('fu::timestamp::save', function () use ($log) {
+        $class = "App\Job\Timestamp\Saver";
+        return new $class($log);
+    });
 
-$w->addRouter($router);
+    $w->addRouter($router);
 
-$s = new Server($w);
-$s->setWorkerNum(2);
-$s->setReactorNum(1);
-$s->setSwoolePort(9500);
-$s->start();
+    $s = new Server($w);
+    $s->setWorkerNum(2);
+    $s->setReactorNum(1);
+    $s->setSwoolePort(9500);
+    $s->start();
+} catch (ContextException $e) {
+    $log->err($e->getMessage(), [$e->getCode(), $e->getContext()]);
+}

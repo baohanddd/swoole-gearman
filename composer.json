@@ -2,10 +2,13 @@
   "name": "baohan/swoole-gearman",
   "description": "A multi-processes worker framework based on Swoole and Gearman",
   "require": {
-    "php": "^7.2",
-    "monolog/monolog": "1.0.*"
+    "php": "^7.3",
+    "monolog/monolog": "1.*",
+    "ext-json": "*",
+    "ext-redis": "*"
   },
   "license": "MIT",
+  "version": "1.4.0",
   "authors": [
     {
       "name": "baohan",
