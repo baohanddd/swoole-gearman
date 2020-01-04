@@ -14,6 +14,7 @@ class Saver extends Job
 
     public function execute(Collection $payload): bool
     {
-//        var_dump($data);
+        $this->log->debug('in saver->execute()...');
+        return true;
     }
 }
