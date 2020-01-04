@@ -23,7 +23,7 @@ class Context
     public function __construct(Collection $payload)
     {
         if (!$this->validate($payload)) {
-            throw new ContextException('Invalid context', 421, (array) $payload);
+            throw new ContextException('Invalid context', 421, $payload->all());
         }
 
         $this->name = $payload->name;

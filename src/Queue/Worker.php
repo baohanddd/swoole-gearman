@@ -61,11 +61,12 @@ class Worker
         while($val = $this->r->blPop($this->router->getListenQueueName(), 0)) {
             $json = $val[1];
             $payload = $this->getPayload($json);
+            $this->log->debug('raw payload', $payload->all());
             $context = new Context($payload);
             $this->log->debug("Running worker", [$this->name]);
             $this->router->callback($context);
+           \swoole_process::wait(false);
         }
-        \swoole_process::wait(false);
     }
 
     /**
