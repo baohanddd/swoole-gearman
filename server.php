@@ -45,7 +45,7 @@ try {
     $w->addRouter($router);
 
     $s = new Server($w);
-    $s->setWorkerNum(2);
+    $s->setWorkerNum(3);
     $s->setReactorNum(1);
     $s->setSwoolePort(9500);
     $s->start();

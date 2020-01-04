@@ -14,7 +14,7 @@ $json = json_encode([
     ]
 ]);
 
-foreach(range(0, 2) as $i) {
+foreach(range(0, 10) as $i) {
     if (!$r->lPush($queue, $json)) {
         echo 'can not push job to queue' . PHP_EOL;
     }
