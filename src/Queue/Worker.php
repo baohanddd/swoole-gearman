@@ -59,14 +59,28 @@ class Worker
     public function listen()
     {
         while($val = $this->r->blPop($this->router->getListenQueueName(), 0)) {
-            $json = $val[1];
-            $payload = $this->getPayload($json);
-            $this->log->debug('raw payload', $payload->all());
-            $context = new Context($payload);
-            $this->log->debug("Running worker", [$this->name]);
-            $this->router->callback($context);
-           \swoole_process::wait(false);
+            try {
+                $json = $val[1];
+                $this->log->debug('raw serialize', $val);
+                $payload = $this->getPayload($json);
+                $this->log->debug('raw payload', $payload->all());
+                $this->setExtra($payload->all());
+                $context = new Context($payload);
+                $this->log->debug("Running worker", [$this->name]);
+                $this->router->callback($context);
+            } catch (\Throwable $e) {
+                $this->log->err($e->getMessage(), [$e->getCode() => $json]);
+            }
+            \swoole_process::wait(false);
         }
+    }
+
+    protected function setExtra(array $extra)
+    {
+        $this->log->pushProcessor(function ($record) use ($extra) {
+            $record['extra'] = $extra;
+            return $record;
+        });
     }
 
     /**
@@ -76,7 +90,7 @@ class Worker
      */
     protected function getPayload(string $json): Collection
     {
-        $payload = json_decode($json, true);
+        $payload = json_decode(unserialize($json), true);
         if (json_last_error()) {
             throw new ContextException(json_last_error_msg(), 420, [$json]);
         }
