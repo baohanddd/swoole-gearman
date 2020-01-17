@@ -32,21 +32,13 @@ class Worker
 
     /**
      * Worker constructor.
-     * @param string $host
-     * @param int $port
+     * @param Redis $redis
      * @param Logger $log
-     * @throws ContextException
      */
-    public function __construct(string $host = '127.0.0.1', int $port = 6379, Logger $log)
+    public function __construct(Redis $redis, Logger $log)
     {
         $this->log = $log;
-        $this->r = new Redis();
-        if(!$this->r->pconnect($host, $port)) {
-            throw new ContextException('Can not connect redis server', 510, [
-                'host' => $host,
-                'port' => $port
-            ]);
-        }
+        $this->r = $redis;
         $this->r->setOption(Redis::OPT_READ_TIMEOUT, -1);
     }
 
@@ -63,7 +55,6 @@ class Worker
                 $json = $val[1];
                 $this->log->debug('raw serialize', $val);
                 $payload = $this->getPayload($json);
-                $this->log->debug('raw payload', $payload->all());
                 $this->setExtra($payload->all());
                 $context = new Context($payload);
                 $this->log->debug("Running worker", [$this->name]);
