@@ -37,10 +37,10 @@ $log = new Logger('worker');
 $log->pushHandler(new StreamHandler('/data/logs/worker.log', Logger::DEBUG));
 $log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
-$endPoint  = "http://1846315114815566.mns.cn-shenzhen.aliyuncs.com/";
-$accessId  = "LTAI4GDM4jaaTRJL48WHEEUX";
-$accessKey = "1KzqSuUXdmpBQ0f1NHiYgr9CLqhh4J";
-$queueName = "fu-queue";
+$endPoint  = "<ali-mns-end-point>";
+$accessId  = "<your-access-id>";
+$accessKey = "<your-access-key>";
+$queueName = "<your-queue-name>";
 
 try {
     $port = 6379;
