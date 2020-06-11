@@ -4,6 +4,7 @@ namespace baohan\SwooleGearman\Queue;
 use baohan\SwooleGearman\Collection;
 use baohan\SwooleGearman\Context;
 use baohan\SwooleGearman\Exception\ContextException;
+use baohan\SwooleGearman\Queue;
 use baohan\SwooleGearman\Router;
 use Monolog\Logger;
 use Redis;
@@ -11,7 +12,7 @@ use Redis;
 class Worker
 {
     /**
-     * @var Redis
+     * @var Queue
      */
     private $r;
 
@@ -32,14 +33,13 @@ class Worker
 
     /**
      * Worker constructor.
-     * @param Redis $redis
+     * @param Queue $queue
      * @param Logger $log
      */
-    public function __construct(Redis $redis, Logger $log)
+    public function __construct(Queue $queue, Logger $log)
     {
         $this->log = $log;
-        $this->r = $redis;
-        $this->r->setOption(Redis::OPT_READ_TIMEOUT, -1);
+        $this->r = $queue;
     }
 
     /**
@@ -50,7 +50,7 @@ class Worker
      */
     public function listen()
     {
-        while($val = $this->r->blPop($this->router->getListenQueueName(), 0)) {
+        while($val = $this->r->block($this->router->getListenQueueName())) {
             try {
                 $json = $val[1];
                 $this->log->debug('raw serialize', $val);

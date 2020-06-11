@@ -1,15 +1,20 @@
 <?php
+require('vendor/autoload.php');
+define('APP_PATH', realpath('.'));
+
 use baohan\SwooleGearman\Collection;
 use baohan\SwooleGearman\Exception\ContextException;
-use baohan\SwooleGearman\Queue\RedisQueue;
+use baohan\SwooleGearman\Queue\MnsQueue;
 use baohan\SwooleGearman\Queue\Worker;
 use baohan\SwooleGearman\Router;
 use baohan\SwooleGearman\Server;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
-require('vendor/autoload.php');
-define('APP_PATH', realpath('.'));
+use AliyunMNS\Client;
+use AliyunMNS\Requests\SendMessageRequest;
+use AliyunMNS\Requests\CreateQueueRequest;
+use AliyunMNS\Exception\MnsException;
 
 spl_autoload_register(function($class) {
     static $ds = '/';
@@ -32,12 +37,19 @@ $log = new Logger('worker');
 $log->pushHandler(new StreamHandler('/data/logs/worker.log', Logger::DEBUG));
 $log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
+$endPoint  = "http://1846315114815566.mns.cn-shenzhen.aliyuncs.com/";
+$accessId  = "LTAI4GDM4jaaTRJL48WHEEUX";
+$accessKey = "1KzqSuUXdmpBQ0f1NHiYgr9CLqhh4J";
+$queueName = "fu-queue";
+
 try {
-    $host = '172.17.0.1';
     $port = 6379;
-    $redis = new \Redis();
-    $redis->connect($host, $port);
-    $queue = new RedisQueue($redis);
+    $client = new Client($endPoint, $accessId, $accessKey);
+    /**
+     * @var \AliyunMNS\Queue $mns
+     */
+    $mns = $client->getQueueRef($queueName);
+    $queue = new MnsQueue($mns);
     $w = new Worker($queue, $log);
 
     $router = new Router();
