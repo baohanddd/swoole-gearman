@@ -68,6 +68,11 @@ class Worker
 
     protected function setExtra(array $extra)
     {
+        try {
+            $this->log->popProcessor();
+        } catch (\LogicException $e) {
+//            $this->log->error('no process registered');
+        }
         $this->log->pushProcessor(function ($record) use ($extra) {
             $record['extra'] = $extra;
             return $record;
