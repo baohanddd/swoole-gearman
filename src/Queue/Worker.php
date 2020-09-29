@@ -84,9 +84,11 @@ class Worker
      * @return Collection
      * @throws ContextException
      */
-    protected function getPayload(string $json): Collection
+    public function getPayload(string $json): Collection
     {
-        $payload = json_decode(unserialize($json), true);
+        $item = @unserialize($json);
+        if ($item === false) throw new ContextException('can not unserialize payload', 420, [$json]);
+        $payload = json_decode($item, true);
         if (json_last_error()) {
             throw new ContextException(json_last_error_msg(), 420, [$json]);
         }

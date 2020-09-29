@@ -1,6 +1,8 @@
 {
   "name": "baohan/swoole-gearman",
   "description": "A multi-processes worker framework based on Swoole and Gearman",
+  "keywords": ["PHP", "Swoole", "Gearman", "Redis", "Worker"],
+  "type": "library",
   "require": {
     "php": "^7.3",
     "monolog/monolog": "1.*",
@@ -8,13 +10,16 @@
     "ext-json": "*",
     "ext-redis": "*"
   },
+  "require-dev": {
+    "phpunit/phpunit": "^9"
+  },
   "license": "MIT",
-  "version": "1.5.3",
   "authors": [
     {
       "name": "baohan",
       "email": "baohanddd@gmail.com",
-      "homepage": "https://twitter.com/baohanddd"
+      "homepage": "https://githuba.com/baohanddd",
+      "role": "Developer"
     }
   ],
   "autoload": {
