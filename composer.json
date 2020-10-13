@@ -1,7 +1,7 @@
 {
   "name": "baohan/swoole-gearman",
   "description": "A multi-processes worker framework based on Swoole and Gearman",
-  "keywords": ["PHP", "Swoole", "Gearman", "Redis", "Worker"],
+  "keywords": ["PHP", "Swoole", "Gearman", "Redis", "Worker", "AliYun-MNS"],
   "type": "library",
   "require": {
     "php": "^7.3",

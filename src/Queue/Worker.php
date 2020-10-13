@@ -14,7 +14,7 @@ class Worker
     /**
      * @var Queue
      */
-    private $r;
+    private $queue;
 
     /**
      * @var Router
@@ -39,7 +39,7 @@ class Worker
     public function __construct(Queue $queue, Logger $log)
     {
         $this->log = $log;
-        $this->r = $queue;
+        $this->queue = $queue;
     }
 
     /**
@@ -50,7 +50,7 @@ class Worker
      */
     public function listen()
     {
-        while($val = $this->r->block($this->router->getListenQueueName())) {
+        while($val = $this->queue->block($this->router->getListenQueueName())) {
             try {
                 $json = $val[1];
                 $this->log->debug('raw serialize', $val);
