@@ -1,263 +1,130 @@
 <?php
 namespace baohan\SwooleGearman;
 
-use baohan\SwooleGearman\Queue\Worker;
+use baohan\SwooleGearman\Exception\ContextException;
+use Exception;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+use Swoole\Server as SwooleServer;
 
 class Server
 {
     /**
-     * @var int
-     */
-    private $worker_num = 4;
-
-    /**
-     * @var int
-     */
-    private $reactor_num = 2;
-
-    /**
      * @var string
      */
-    private $swoole_host = '127.0.0.1';
-
+    public $host = '127.0.0.1';
     /**
      * @var int
      */
-    private $swoole_port = 9500;
-
+    public $port = 9500;
     /**
-     * @var bool
+     * @var int
      */
-    private $daemonize = false;
-
+    public $worker_num = 1;
     /**
-     * @var Worker
+     * @var int
      */
-    private $w;
-
+    public $task_worker_num = 4;
     /**
-     * @var Callable
+     * @var int
      */
-    private $evt_start;
-
+    public $task_max_request = 500;
+    
     /**
-     * @var Callable
+     * @var Logger
      */
-    private $evt_connect;
-
+    protected $log;
+    
     /**
-     * @var Callable
+     * @var Jobs
      */
-    private $evt_receive;
-
+    public $jobs;
+    
     /**
-     * @var Callable
+     * @param int $logLevel
+     * @throws Exception
      */
-    private $evt_close;
-
-    /**
-     * @var Callable
-     */
-    private $evt_shutdown;
-
-    /**
-     * @var Callable
-     */
-    private $evt_worker_start;
-
-    public function __construct(Worker $worker)
+    public function __construct(int $logLevel = Logger::DEBUG)
     {
-//        $this->w = new Worker(['host' => $this->gearman_host, 'port' => $this->gearman_port]);
-        $this->w = $worker;
+        $this->log = new Logger('swoole-gearman');
+        $this->log->pushHandler(new StreamHandler('php://stdout', $logLevel));
+        $this->jobs = new Jobs();
     }
-
+    
     public function start()
     {
-        $serv = new \swoole_server($this->swoole_host, $this->swoole_port);
-        $serv->set(['worker_num' => $this->worker_num, 'reactor_num' => $this->reactor_num, 'daemonize' => $this->daemonize]);
-        $serv->on('Start',       [$this, 'onStart']);
-        $serv->on('Connect',     [$this, "onConnect"]);
-        $serv->on('Receive',     [$this, "onReceive"]);
-        $serv->on('Close',       [$this, "onClose"]);
-        $serv->on('WorkerStart', [$this, "onWorkerStart"]);
-        $serv->on('Shutdown',    [$this, "onShutdown"]);
-
-        $GLOBALS['atomic'] = new \swoole_atomic(10);
-
-        $serv->start();
+        $srv = new SwooleServer($this->host, $this->port);
+        $srv->set([
+            'worker_num' => $this->worker_num,
+            'task_worker_num' => $this->task_worker_num,
+            'task_ipc_mode' => 1,   // unix socket
+            'task_max_request' => $this->task_max_request,
+            'dispatch_mode' => 2,
+        ]);
+        $srv->on('Connect', function ($srv, $fd) {
+            $this->log->debug("Client-{$fd}: Connect.");
+        });
+        $srv->on('receive', function ($srv, $fd, $reactor, $data) {
+            $this->log->debug("[#".$srv->worker_id."]\tClient[$fd]: $data");
+            $dstWorkerId = -1;
+            $taskId = $srv->task($data, $dstWorkerId);
+            $srv->send($fd, 'async task: '.$taskId."\n");
+        });
+        $srv->on('WorkerStart', function ($srv, $workerId) {
+            global $argv;
+            if ($workerId >= $srv->setting['worker_num']) {
+                swoole_set_process_name("php {$argv[0]}: task_worker");
+            } else {
+                swoole_set_process_name("php {$argv[0]}: worker");
+            }
+            $this->log->debug("worker[#".$workerId."] started...");
+        });
+        $srv->on('Task', function ($srv, $taskId, $reactorId, $data) {
+            $this->log->debug("worker[#{$srv->worker_id}] -> async task[id={$taskId}]...");
+            try {
+                $context = new Context($this->getPayload($data));
+                $this->jobs->getJob($context->name)->execute($context->data, $srv->worker_id);
+            } catch (\Throwable $e) {
+                $this->log->error($e->getCode().' => '.$e->getMessage(), [$data]);
+            }
+            $srv->finish('ok');
+        });
+        $srv->on('Finish', function ($serv, $taskId, $data) {
+            $this->log->debug("AsyncTask[{$taskId}] Finish: {$data}");
+        });
+        $srv->on('Close', function ($srv, $fd) {
+            $this->log->debug("Client-{$fd}: Closed.");
+        });
+        $this->log->info('server starting...', [
+            'host' => $this->host,
+            'port' => $this->port,
+            'worker_num' => $this->worker_num,
+            'task_worker_num' => $this->task_worker_num,
+            'task_max_request' => $this->task_max_request,
+        ]);
+        $srv->start();
     }
-
-    public function onStart($serv) {
-        if(is_callable($this->evt_start)) {
-            call_user_func($this->evt_start, $serv);
+    
+    /**
+     * @param string $jobName
+     * @param \Closure $closure
+     */
+    public function addCallback(string $jobName, \Closure $closure)
+    {
+        $this->jobs->add($jobName, $closure);
+    }
+    
+    /**
+     * @param string $json
+     * @return Collection
+     * @throws ContextException
+     */
+    public function getPayload(string $json): Collection
+    {
+        $payload = json_decode($json, true);
+        if (json_last_error()) {
+            throw new ContextException(json_last_error_msg(), 420, [$json]);
         }
-    }
-
-    public function onConnect($serv, $fd) {
-        if(is_callable($this->evt_connect)) {
-            call_user_func($this->evt_connect, $serv, $fd);
-        }
-    }
-
-    public function onReceive($serv, $fd, $from_id, $data) {
-        if(is_callable($this->evt_receive)) {
-            call_user_func($this->evt_receive, $serv, $fd, $from_id, $data);
-        }
-    }
-
-    public function onClose($serv, $fd) {
-        if(is_callable($this->evt_close)) {
-            call_user_func($this->evt_close, $serv, $fd);
-        }
-    }
-
-    public function onShutdown($serv)
-    {
-        if(is_callable($this->evt_shutdown)) {
-            call_user_func($this->evt_shutdown, $serv);
-        }
-    }
-
-    public function onWorkerStart($serv, $workerId) {
-        if ($workerId >= $serv->setting['worker_num']) {
-            return true;
-        }
-        $GLOBALS['worker_id'] = $workerId;
-        echo "worker{$workerId} start" . PHP_EOL;
-
-        if(is_callable($this->evt_worker_start)) {
-            call_user_func($this->evt_worker_start, $serv, $workerId);
-        }
-
-        $this->w->setName($workerId);
-        $this->w->listen();
-    }
-
-    /**
-     * @return int
-     */
-    public function getWorkerNum()
-    {
-        return $this->worker_num;
-    }
-
-    /**
-     * @param int $worker_num
-     */
-    public function setWorkerNum($worker_num)
-    {
-        $this->worker_num = (int) $worker_num;
-    }
-
-    /**
-     * @return int
-     */
-    public function getReactorNum()
-    {
-        return $this->reactor_num;
-    }
-
-    /**
-     * @param int $reactor_num
-     */
-    public function setReactorNum($reactor_num)
-    {
-        $this->reactor_num = (int) $reactor_num;
-    }
-
-    /**
-     * @return string
-     */
-    public function getSwooleHost()
-    {
-        return $this->swoole_host;
-    }
-
-    /**
-     * @param string $swoole_host
-     */
-    public function setSwooleHost($swoole_host)
-    {
-        $this->swoole_host = $swoole_host;
-    }
-
-    /**
-     * @return int
-     */
-    public function getSwoolePort()
-    {
-        return $this->swoole_port;
-    }
-
-    /**
-     * @param int $swoole_port
-     */
-    public function setSwoolePort($swoole_port)
-    {
-        $this->swoole_port = (int) $swoole_port;
-    }
-
-    /**
-     * @return boolean
-     */
-    public function isDaemonize()
-    {
-        return $this->daemonize;
-    }
-
-    /**
-     * @param boolean $daemonize
-     */
-    public function setDaemonize($daemonize)
-    {
-        $this->daemonize = (bool) $daemonize;
-    }
-
-    /**
-     * @param Callable $evt_start
-     */
-    public function setEvtStart(callable $evt_start)
-    {
-        $this->evt_start = $evt_start;
-    }
-
-    /**
-     * @param Callable $evt_connect
-     */
-    public function setEvtConnect(callable $evt_connect)
-    {
-        $this->evt_connect = $evt_connect;
-    }
-
-    /**
-     * @param Callable $evt_receive
-     */
-    public function setEvtReceive(callable $evt_receive)
-    {
-        $this->evt_receive = $evt_receive;
-    }
-
-    /**
-     * @param Callable $evt_close
-     */
-    public function setEvtClose(callable $evt_close)
-    {
-        $this->evt_close = $evt_close;
-    }
-
-    /**
-     * @param Callable $evt_shutdown
-     */
-    public function setEvtShutdown(callable $evt_shutdown)
-    {
-        $this->evt_shutdown = $evt_shutdown;
-    }
-
-    /**
-     * @param Callable $evt_worker_start
-     */
-    public function setEvtWorkerStart(callable $evt_worker_start)
-    {
-        $this->evt_worker_start = $evt_worker_start;
+        return new Collection($payload);
     }
 }

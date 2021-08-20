@@ -1,24 +1,20 @@
 <?php
+use Swoole\Client;
 
-$r = new \Redis();
-$r->connect('redis', 6379);
-
-echo 'connected redis...'.PHP_EOL;
-
-$queue = 'worker_queue';
-
-$json = json_encode([
-    'name' => 'fu::timestamp::save',
-    'data' => [
-        'timestamp' => time()
-    ]
-]);
-
-foreach(range(0, 10) as $i) {
-    if (!$r->lPush($queue, $json)) {
-        echo 'can not push job to queue' . PHP_EOL;
-    }
-
-    echo "pushed a job" . PHP_EOL;
-
+$client = new Client(SWOOLE_SOCK_TCP);
+if (!$client->connect('127.0.0.1', 9500, 0.5))
+{
+    echo "connect failed. Error: {$client->errCode}\n";
 }
+$data = [
+    'name' => 'timestamp::print',
+    'data' => [
+        'message' => ''
+    ]
+];
+for ($i = 0; $i < 1024; $i++) {
+    $data['data']['message'] = 'query on '.$i;
+    $client->send(json_encode($data));
+    echo $client->recv();
+}
+$client->close();
