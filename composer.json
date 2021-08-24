@@ -6,7 +6,9 @@
   "require": {
     "php": "^7.3",
     "monolog/monolog": "1.*",
-    "ext-json": "*"
+    "ext-json": "*",
+    "ext-gearman": "*",
+    "ext-swoole": "^4.6"
   },
   "require-dev": {
     "phpunit/phpunit": "^9"

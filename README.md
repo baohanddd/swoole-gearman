@@ -6,10 +6,18 @@ A multi-processes worker framework based on Swoole.
 Install
 ====
 
-Install `swoole` first.
-
 ```
 $ composer require baohan/swoole-gearman
+```
+
+But you should build a infrastructure with specified version of `swoole`, `gearman` and `php` first.
+
+Since you could try docker image too.
+
+```
+> docker pull baohanddd/swoole-gearman:1.6.1
+
+> docker run --rm --name=worker -v=$(pwd):/data -w=/data -p=9500:9500 baohanddd/swoole-gearman:1.6.1 php server.php
 ```
 
 How
@@ -87,5 +95,61 @@ worker[12] => query on 1020
 worker[7] => query on 1015
 ......
 ```
+
+Now we try post job into Gearman Job server.
+
+To do that, just need replace \baohan\SwooleGearman\Server to \baohan\SwooleGearman\Gearman.
+please take a look, there isn't need `task_worker_num` option yet, `host` and `port` are same with gearman-job-server.
+
+```php
+use baohan\SwooleGearman\Collection;
+use Monolog\Logger;
+
+require('vendor/autoload.php');
+
+try {
+    $s = new \baohan\SwooleGearman\Gearman(Logger::INFO);
+    $s->worker_num = 10;
+    $s->host = 'gearman';
+    $s->port = '4730';
+    $s->addCallback('timestamp::print', function () {
+        return new class() extends \baohan\SwooleGearman\Job {
+            public function execute(Collection $payload, int $workerId): bool {
+                sleep(1);
+                echo "worker[{$workerId}] => ".$payload['message'].PHP_EOL;
+                return true;
+            }
+        };
+    });
+    $s->start();
+} catch (Throwable $e) {
+    echo $e->getMessage();
+}
+```
+On client side, we post job to gearman server instead of swoole server by gearman client.
+
+```php
+<?php
+$gmc = new GearmanClient();
+$gmc->addServer('gearman', '4730');
+$data = [
+    'name' => 'timestamp::print',
+    'data' => [
+        'message' => ''
+    ]
+];
+for ($i = 0; $i < 1024; $i++) {
+    $data['data']['message'] = $i + 1;
+    $gmc->doBackground('timestamp::print', json_encode($data));
+    if ($gmc->returnCode() != GEARMAN_SUCCESS) {
+        echo "bad return code".PHP_EOL;
+        exit;
+    }
+}
+```
+In this mode, The huge advantage is never lose jobs even worker server is crashed, all jobs are stored in Gearman.
+On the other side, all clients only need to know gearman server address and port, we can deploy more than one 
+instances of swoole server on difference machines more easily.
+
 That's all.
 

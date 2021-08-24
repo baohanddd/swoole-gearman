@@ -65,4 +65,12 @@ class Jobs
         }
         return false;
     }
+    
+    /**
+     * @return array
+     */
+    public function getItems(): array
+    {
+        return $this->items;
+    }
 }

@@ -16,16 +16,15 @@ class Context
     public $data;
 
     /**
-     * Context constructor.
-     * @param Collection $payload
+     * @param string|null $json
      * @throws ContextException
      */
-    public function __construct(Collection $payload)
+    public function __construct(?string $json)
     {
+        $payload = $this->getPayload($json);
         if (!$this->validate($payload)) {
             throw new ContextException('Invalid context', 421, $payload->all());
         }
-
         $this->name = $payload->name;
         $this->data = new Collection($payload->data);
     }
@@ -42,5 +41,19 @@ class Context
         if (!is_string($context['name'])) return false;
 
         return true;
+    }
+    
+    /**
+     * @param string $json
+     * @return Collection
+     * @throws ContextException
+     */
+    public function getPayload(string $json): Collection
+    {
+        $payload = json_decode($json, true);
+        if (json_last_error()) {
+            throw new ContextException(json_last_error_msg(), 420, [$json]);
+        }
+        return new Collection($payload);
     }
 }
