@@ -10,14 +10,17 @@ Install
 $ composer require baohan/swoole-gearman
 ```
 
-But you should build a infrastructure with specified version of `swoole`, `gearman` and `php` first.
+But you should set runtime infrastructure up with specified version of `swoole`, `gearman` and `php` first.
 
-Since you could try docker image too.
+Run by Docker
 
 ```
 > docker pull baohanddd/swoole-gearman:1.6.1
-
-> docker run --rm --name=worker -v=$(pwd):/data -w=/data -p=9500:9500 baohanddd/swoole-gearman:1.6.1 php server.php
+> docker pull artefactual/gearmand
+> docker network create swoole-gearman
+> docker run --rm --name=gearman --network=swoole-gearman artefactual/gearmand
+> cd your_project/
+> docker run --rm --name=worker --network=swoole-gearman -v=$(pwd):/data -w=/data baohanddd/swoole-gearman:1.6.1 php server.php
 ```
 
 How
@@ -52,7 +55,8 @@ try {
     echo $e->getMessage();
 }
 ```
-The server will be started
+The server will be started.
+
 ```
 [2021-08-20 05:52:59] swoole-gearman.INFO: server starting... {"host":"127.0.0.1","port":9500,"worker_num":1,"task_worker_num":19,"task_max_request":500} []
 ```
