@@ -5,7 +5,7 @@
   "type": "library",
   "require": {
     "php": "^7.3",
-    "monolog/monolog": "1.*",
+    "monolog/monolog": "^2.3",
     "ext-json": "*",
     "ext-gearman": "*",
     "ext-swoole": "^4.6"
