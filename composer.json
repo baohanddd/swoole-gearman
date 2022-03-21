@@ -4,8 +4,8 @@
   "keywords": ["PHP", "Swoole", "Gearman", "Redis", "Worker"],
   "type": "library",
   "require": {
-    "php": "^7.3",
-    "monolog/monolog": "^2.3",
+    "php": "^7.4",
+    "monolog/monolog": "^1.3",
     "ext-json": "*",
     "ext-gearman": "*",
     "ext-swoole": "^4.6"
